@@ -282,8 +282,39 @@ dashboard = {
     "panels": panels,
 }
 
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci-test-results.json")
-with open(out, "w", encoding="utf-8", newline="\n") as handle:
-    json.dump(dashboard, handle, indent=2, ensure_ascii=False)
-    handle.write("\n")
-print(f"wrote {out} ({len(panels)} panels)")
+def public_copy(source: dict) -> dict:
+    """The same dashboard without variables, for Grafana's "Share externally".
+
+    Externally shared dashboards can't use variables, so the data sources are
+    chosen once at import (the __inputs below) and the filters are fixed: every
+    repo, default branches only.
+    """
+    text = json.dumps(source)
+    for old, new in (("${prometheus}", "${DS_PROMETHEUS}"), ("${loki}", "${DS_LOKI}"),
+                     ('=~\\"$repo\\"', '=~\\".*\\"'), ('=~\\"$branch\\"', '=~\\"main|master\\"')):
+        text = text.replace(old, new)
+    copy = json.loads(text)
+    leftover = [v for v in ("$repo", "$branch", "${prometheus}", "${loki}") if v in text]
+    assert not leftover, f"variables left in the public copy: {leftover}"
+    copy.update(
+        title="CI test results (public)",
+        uid="test-results-otel-public",
+        description=source["description"] + " Read-only copy for sharing: all repos, main/master branches.",
+        templating={"list": []},
+        __inputs=[
+            {"name": "DS_PROMETHEUS", "label": "Metrics (Prometheus)", "type": "datasource",
+             "pluginId": "prometheus", "pluginName": "Prometheus"},
+            {"name": "DS_LOKI", "label": "Logs (Loki)", "type": "datasource",
+             "pluginId": "loki", "pluginName": "Loki"},
+        ],
+    )
+    return copy
+
+
+here = os.path.dirname(os.path.abspath(__file__))
+for name, content in (("ci-test-results.json", dashboard), ("ci-test-results-public.json", public_copy(dashboard))):
+    out = os.path.join(here, name)
+    with open(out, "w", encoding="utf-8", newline="\n") as handle:
+        json.dump(content, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    print(f"wrote {out} ({len(panels)} panels)")
