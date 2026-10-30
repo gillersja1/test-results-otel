@@ -93,7 +93,7 @@ pass_by_repo = (
 add({
     "type": "bargauge", "title": "Pass rate by repo (latest run)",
     "datasource": PROM, "targets": [{**prom(pass_by_repo, "{{service_name}}", instant=True), "format": "time_series"}],
-    "options": {"orientation": "horizontal", "displayMode": "gradient", "showUnfilled": True,
+    "options": {"orientation": "horizontal", "displayMode": "basic", "showUnfilled": True,
                 "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False}, "minVizHeight": 16},
     "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1, "decimals": 0,
                                  "color": {"mode": "thresholds"},

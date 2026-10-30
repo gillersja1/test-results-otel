@@ -67,7 +67,11 @@ set (a fork, or secrets not added yet) it prints a notice and sends nothing.
 ## Dashboard
 
 [`dashboards/ci-test-results.json`](dashboards/ci-test-results.json) is a
-ready-made Grafana dashboard for this data. Import it with **Dashboards → New →
+ready-made Grafana dashboard for this data.
+
+![The CI test results dashboard in Grafana Cloud](dashboards/screenshot.png)
+
+Import it with **Dashboards → New →
 Import**, then pick your Prometheus and Loki data sources at the top.
 
 - **Headline:** pass rate and failures in the latest runs, total test
