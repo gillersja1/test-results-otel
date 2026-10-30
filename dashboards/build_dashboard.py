@@ -121,7 +121,9 @@ add({
     "datasource": LOKI,
     "targets": [loki(
         f'{LOKI_SEL} | {GATE} | test_case_result_status="fail" '
-        '| line_format "{{.service_name}} · {{.test_suite_name}} · {{.test_case_name}} — {{.test_message}}  ({{.cicd_pipeline_run_url_full}})"')],
+        '| line_format "{{.service_name}} · {{.test_suite_name}} · {{.test_case_name}} — {{.test_message}}  ({{.cicd_pipeline_run_url_full}})" '
+        # Grafana prints every remaining field after the line; the line already has what matters.
+        '| keep service_name')],
     "options": {"showTime": True, "wrapLogMessage": True, "sortOrder": "Descending", "enableLogDetails": True, "showLabels": False, "showCommonLabels": False,
                 "dedupStrategy": "none", "prettifyLogMessage": False},
 }, 0, 14, 24, 9)

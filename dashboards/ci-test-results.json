@@ -494,7 +494,7 @@
             "uid": "${loki}"
           },
           "refId": "A",
-          "expr": "{service_namespace=\"ci\", service_name=~\"$repo\"} | vcs_ref_head_name=~\"$branch\" | test_suite_name!~\"known-defects.*|self-test\" | test_case_result_status=\"fail\" | line_format \"{{.service_name}} · {{.test_suite_name}} · {{.test_case_name}} — {{.test_message}}  ({{.cicd_pipeline_run_url_full}})\"",
+          "expr": "{service_namespace=\"ci\", service_name=~\"$repo\"} | vcs_ref_head_name=~\"$branch\" | test_suite_name!~\"known-defects.*|self-test\" | test_case_result_status=\"fail\" | line_format \"{{.service_name}} · {{.test_suite_name}} · {{.test_case_name}} — {{.test_message}}  ({{.cicd_pipeline_run_url_full}})\" | keep service_name",
           "legendFormat": "",
           "queryType": "range"
         }
