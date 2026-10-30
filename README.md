@@ -83,6 +83,10 @@ Import**, then pick your Prometheus and Loki data sources at the top.
 - **Load tests:** every k6 check and threshold and JMeter sampler, plus
   JMeter p95 and average response times per run
 - **Suite duration per run**
+- **Dungeon (live site):** plays per room, solve rate, treasure claimed and
+  response times for the [Playwright Dungeon Crawl](https://playwright-dungeon-crawl.onrender.com),
+  from the site's own OpenTelemetry logs and metrics. Game numbers count log
+  lines, one per event, because the free host restarts the app and resets its counters.
 
 It shows the `main` and `master` branches by default, so PR runs don't count
 twice; pick **All** under Branch to include them. Suites named `known-defects*`

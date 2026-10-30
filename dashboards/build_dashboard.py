@@ -46,7 +46,7 @@ def add(panel, x, y, w, h):
     panels.append(panel)
 
 
-def stat(title, target, description, unit="none", thresholds=None, decimals=None):
+def stat(title, target, description, unit="none", thresholds=None, decimals=None, no_value=None):
     panel = {
         "type": "stat", "title": title, "description": description,
         "datasource": target["datasource"], "targets": [target],
@@ -58,6 +58,8 @@ def stat(title, target, description, unit="none", thresholds=None, decimals=None
     }
     if decimals is not None:
         panel["fieldConfig"]["defaults"]["decimals"] = decimals
+    if no_value is not None:
+        panel["fieldConfig"]["defaults"]["noValue"] = no_value
     return panel
 
 
@@ -241,6 +243,101 @@ add({
                     "overrides": []},
     "options": {"legend": {"displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi"}},
 }, 0, 50, 24, 9)
+
+# --- Dungeon: the live Playwright Dungeon Crawl site ------------------------------
+# Game numbers count the site's log lines, one per event ("Attempt in {Room}",
+# "Answer in {Room}: {Outcome}", "Treasure claim for {Room}"). Its counters can't
+# be summed reliably: Render's free instance sleeps and restarts them mid-traffic.
+# Response times come from ASP.NET Core's request duration histogram.
+SITE = 'service_name="playwright-dungeon-crawl"'
+GAME = '{service_name="playwright-dungeon-crawl"} | scope_name="PlaywrightDungeonCrawl.Rooms"'
+ATTEMPTS = f'{GAME} |= "Attempt in "'
+ANSWERS = f'{GAME} |= "Answer in "'
+CLAIMS = f'{GAME} |= "Treasure claim for " | Room!="invalid"'
+# Pages and API calls only: health checks and static files (any route with a dot) would swamp them.
+REQUESTS = f'http_server_request_duration_seconds_bucket{{{SITE}, http_route!="", http_route!~"/health|.*[.].*"}}'
+SOLVE_STEPS = [{"color": "red", "value": None}, {"color": "orange", "value": 0.3}, {"color": "green", "value": 0.6}]
+
+
+def solve_rate(by=""):
+    group = f" by ({by})" if by else ""
+    return (f'sum{group} (count_over_time({ANSWERS} | Outcome="correct" [$__range]))'
+            f' / sum{group} (count_over_time({ANSWERS} [$__range]))')
+
+
+add({"type": "row", "title": "Dungeon (live site)", "collapsed": False, "panels": []}, 0, 59, 24, 1)
+
+add(stat("Room attempts",
+         loki(f"sum(count_over_time({ATTEMPTS} [$__range]))", instant=True),
+         "Trap room attempts started on the live site, by people or their tests.", decimals=0),
+    0, 60, 6, 4)
+add(stat("Solve rate",
+         loki(solve_rate(), instant=True),
+         "Correct answers / all answers given in trap rooms.",
+         unit="percentunit", decimals=0, thresholds=SOLVE_STEPS),
+    6, 60, 6, 4)
+add(stat("Treasure claimed",
+         loki(f"sum(count_over_time({CLAIMS} [$__range]))", instant=True),
+         "Valid flags handed in at the Respawn Room's treasure chest.", decimals=0, no_value="0"),
+    12, 60, 6, 4)
+add(stat("Response time (p95)",
+         prom(f"histogram_quantile(0.95, sum by (le) (rate({REQUESTS}[$__range])))"),
+         "95% of page and API requests were answered faster than this (health checks and static files left out).",
+         unit="s", thresholds=[{"color": "green", "value": None}, {"color": "orange", "value": 0.5}, {"color": "red", "value": 2}]),
+    18, 60, 6, 4)
+
+
+def by_room(title, expr, description, unit="none", steps=None, decimals=0):
+    return {
+        "type": "bargauge", "title": title, "description": description, "datasource": LOKI,
+        # A range query: Grafana's bar gauge merges Loki instant results into a single bar.
+        "targets": [loki(expr, "{{Room}}")],
+        "options": {"orientation": "horizontal", "displayMode": "basic", "showUnfilled": True, "minVizHeight": 16,
+                    "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {"unit": unit, "decimals": decimals, "min": 0,
+                                     **({"max": 1} if unit == "percentunit" else {}),
+                                     "color": {"mode": "thresholds" if steps else "fixed", "fixedColor": "orange"},
+                                     "thresholds": {"mode": "absolute", "steps": steps or [{"color": "orange", "value": None}]},
+                                     "noValue": "No plays in this time range"},
+                        "overrides": []},
+    }
+
+
+add(by_room("Plays per room",
+            f"sum by (Room) (count_over_time({ATTEMPTS} [$__range]))",
+            "Attempts started in each trap room."),
+    0, 64, 8, 8)
+add(by_room("Solve rate by room", solve_rate("Room"),
+            "Correct answers / all answers, per room. A low rate means the room is hard, or its lesson needs work.",
+            unit="percentunit", steps=SOLVE_STEPS),
+    8, 64, 8, 8)
+add({
+    "type": "timeseries", "title": "Answers by outcome",
+    "description": "Answers given across all rooms: correct, wrong, too slow (time limit missed) or unknown attempt.",
+    "datasource": LOKI,
+    "targets": [loki(f"sum by (Outcome) (count_over_time({ANSWERS} [$__auto]))", "{{Outcome}}")],
+    "fieldConfig": {"defaults": {"unit": "none", "decimals": 0, "noValue": "No answers in this time range",
+                                 "custom": {"drawStyle": "bars", "fillOpacity": 80, "stacking": {"mode": "normal"}}},
+                    "overrides": [
+                        {"matcher": {"id": "byName", "options": name},
+                         "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": color}}]}
+                        for name, color in (("correct", "green"), ("wrong", "red"), ("too-slow", "orange"),
+                                            ("unknown-attempt", "purple"))]},
+    "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+}, 16, 64, 8, 8)
+add({
+    "type": "timeseries", "title": "Response time by route (p95)",
+    "description": "95th percentile response time of each page and API route.",
+    "datasource": PROM,
+    # "> 0" drops routes with no requests in a step, which would only clutter the legend.
+    "targets": [prom(f"histogram_quantile(0.95, sum by (le, http_route) (rate({REQUESTS}[$__rate_interval]))) > 0",
+                     "{{http_route}}")],
+    "fieldConfig": {"defaults": {"unit": "s", "noValue": "No requests in this time range",
+                                 "custom": {"drawStyle": "line", "showPoints": "auto", "spanNulls": True}},
+                    "overrides": []},
+    "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]},
+                "tooltip": {"mode": "multi"}},
+}, 0, 72, 24, 9)
 
 
 def datasource_var(name, label, kind, regex=""):
