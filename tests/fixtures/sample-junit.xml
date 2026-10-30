@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="playwright" tests="4" failures="1" skipped="1" errors="1" time="3.5">
+  <testsuite name="login.spec.ts" timestamp="2026-10-30T15:00:00.000Z" tests="2" failures="1" time="1,500.25">
+    <testcase name="logs in with a valid user" classname="login.spec.ts" time="1.25" />
+    <testcase name="rejects a locked user" classname="login.spec.ts" time="0.75">
+      <failure message="expected error banner to be visible">Error: expect(locator).toBeVisible() failed</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="api" tests="2">
+    <testcase name="GET /booking returns 200" classname="Bookings" time="0.1">
+      <skipped message="known defect" />
+    </testcase>
+    <testcase name="DELETE returns 201" classname="Bookings" time="0.2">
+      <error message="socket hang up" />
+    </testcase>
+  </testsuite>
+</testsuites>

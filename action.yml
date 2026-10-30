@@ -1,0 +1,51 @@
+name: Test results to OpenTelemetry
+description: Send test results (TRX, JUnit XML, k6, JMeter) to any OTLP backend, such as Grafana Cloud, as logs and metrics.
+author: gillersja1
+branding:
+  icon: activity
+  color: orange
+
+inputs:
+  results:
+    description: Glob pattern(s) for the results files, one per line. ** is supported.
+    required: true
+  format:
+    description: auto, trx, junit, k6 or jmeter. auto decides from the file extension.
+    default: auto
+  otlp-endpoint:
+    description: OTLP/HTTP base URL, without /v1/logs. Falls back to the OTEL_EXPORTER_OTLP_ENDPOINT environment variable.
+    default: ""
+  otlp-headers:
+    description: Headers as key=value,key=value (for example Authorization=Basic ...). Falls back to OTEL_EXPORTER_OTLP_HEADERS.
+    default: ""
+  service-name:
+    description: service.name for the data. Defaults to the repository name.
+    default: ""
+  suite:
+    description: A name for this group of tests, such as ui, api or load. Lets one repo send several suites.
+    default: ""
+  dry-run:
+    description: Write the payloads to RUNNER_TEMP instead of sending them.
+    default: "false"
+  fail-on-error:
+    description: Fail the step if sending fails. By default it only warns, so telemetry never breaks a build.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Send test results
+      shell: bash
+      env:
+        TRO_RESULTS: ${{ inputs.results }}
+        TRO_FORMAT: ${{ inputs.format }}
+        TRO_ENDPOINT: ${{ inputs.otlp-endpoint }}
+        TRO_HEADERS: ${{ inputs.otlp-headers }}
+        TRO_SERVICE_NAME: ${{ inputs.service-name }}
+        TRO_SUITE: ${{ inputs.suite }}
+        TRO_DRY_RUN: ${{ inputs.dry-run }}
+        TRO_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: |
+        # Windows runners call it python; elsewhere python3 is the safe name.
+        if [ "$RUNNER_OS" = "Windows" ]; then PY=python; else PY=python3; fi
+        "$PY" "$GITHUB_ACTION_PATH/src/main.py"

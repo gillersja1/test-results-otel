@@ -1,0 +1,5 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes
+1793374427000,120,GET /api/users,200,OK,Users 1-1,text,true,,512
+1793374427100,180,GET /api/users,200,OK,Users 1-2,text,true,,512
+1793374427200,90,POST /api/login,200,OK,Users 1-1,text,true,,128
+1793374427300,300,POST /api/login,429,Too Many Requests,Users 1-2,text,false,,64

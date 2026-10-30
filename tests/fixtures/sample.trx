@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="00000000-0000-0000-0000-000000000001" name="sample" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Results>
+    <UnitTestResult testId="a1" testName="LoginWorks" duration="00:00:01.2500000" startTime="2026-10-30T11:33:47.8690354-04:00" outcome="Passed" />
+    <UnitTestResult testId="a2" testName="CartTotalIsRight" duration="00:00:00.5000000" startTime="2026-10-30T11:33:49.0000000-04:00" outcome="Failed">
+      <Output>
+        <ErrorInfo>
+          <Message>Expected: 42
+  But was:  41</Message>
+          <StackTrace>at Shop.Tests.CartTests.CartTotalIsRight()</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult testId="a3" testName="NeedsADatabase" duration="00:00:00" outcome="NotExecuted" />
+    <UnitTestResult testId="a4" testName="PriceRows" duration="00:00:00.3000000" outcome="Failed">
+      <InnerResults>
+        <UnitTestResult testId="a4-1" testName="PriceRows (1)" duration="00:00:00.1000000" outcome="Passed" />
+        <UnitTestResult testId="a4-2" testName="PriceRows (2)" duration="00:00:00.2000000" outcome="Failed" />
+      </InnerResults>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="LoginWorks" id="a1"><TestMethod className="Shop.Tests.LoginTests" name="LoginWorks" /></UnitTest>
+    <UnitTest name="CartTotalIsRight" id="a2"><TestMethod className="Shop.Tests.CartTests" name="CartTotalIsRight" /></UnitTest>
+    <UnitTest name="NeedsADatabase" id="a3"><TestMethod className="Shop.Tests.DbTests" name="NeedsADatabase" /></UnitTest>
+    <UnitTest name="PriceRows" id="a4"><TestMethod className="Shop.Tests.CartTests" name="PriceRows" /></UnitTest>
+  </TestDefinitions>
+</TestRun>

@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run the unit tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=python; else PY=python3; fi
+          "$PY" -m unittest discover -s tests -v
+
+  # Runs the action the way other repos will, against the sample files.
+  self-test:
+    name: Self-test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Dry run over every sample format
+        uses: ./
+        with:
+          results: tests/fixtures/sample*
+          suite: self-test
+          dry-run: "true"
+
+      - name: Check the payloads were written
+        shell: bash
+        run: |
+          test -s "$RUNNER_TEMP/test-results-otel-logs.json"
+          test -s "$RUNNER_TEMP/test-results-otel-metrics.json"
+          records=$(grep -c '"severityText"' "$RUNNER_TEMP/test-results-otel-logs.json")
+          echo "log records: $records"
+          test "$records" -eq 15
+
+      - name: No endpoint is a notice, not a failure
+        uses: ./
+        with:
+          results: tests/fixtures/sample.trx
+
+      # Sends the samples for real when the repo has the OTLP secrets,
+      # so the dashboard always has something to show.
+      - name: Send the samples to the backend
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-latest'
+        uses: ./
+        with:
+          results: tests/fixtures/sample*
+          suite: self-test
+          otlp-endpoint: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otlp-headers: ${{ secrets.OTEL_EXPORTER_OTLP_HEADERS }}
+          fail-on-error: "true"
